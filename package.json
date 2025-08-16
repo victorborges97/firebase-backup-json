@@ -1,0 +1,16 @@
+{
+  "name": "@jvborges.97/firebase-backup-json",
+  "version": "0.0.1",
+  "description": "Removes all spaces from a string",
+  "license": "MIT",
+  "repository": "victorborges97/firebase-backup-json",
+  "main": "index.ts",
+  "keywords": [
+    "firebase",
+    "backup",
+    "json",
+    "npm",
+    "package",
+    "victorborges97"
+  ]
+}
