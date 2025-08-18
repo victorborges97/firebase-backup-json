@@ -68,8 +68,8 @@ const restoreFile = async (firestore: admin.firestore.Firestore, pathJson: strin
         );
 
         await restoreBackupJsonInFirebase(firestore, backupColecoes, { viewLog });
-    } catch (error) {
-        logRestoreInfo(true, "❌ Erro ao restaurar arquivo:", error);
+    } catch (error: any) {
+        logRestoreInfo(true, "❌ Erro ao restaurar arquivo:", error.toString());
     }
 };
 
@@ -103,9 +103,9 @@ const restoreBackupJsonInFirebase = async (firestore: admin.firestore.Firestore,
 
         logRestoreInfo(viewLog, "🎉 Restauração concluída com sucesso!");
         logRestoreInfo(viewLog, "🎉 FINALIZADO RESTORE BACKUP", moment().format("YYYY-MM-DD HH:mm:ss"));
-    } catch (error) {
-        logRestoreInfo(viewLog, "❌ Erro ao fazer o restore backup:", error);
-        throw new FirebaseBackupJsonError("Erro ao fazer o restore backup", error);
+    } catch (error: any) {
+        logRestoreInfo(viewLog, "❌ Erro ao fazer o restore backup:", error.toString());
+        throw new FirebaseBackupJsonError("Erro ao fazer o restore backup", error.toString());
     }
 };
 

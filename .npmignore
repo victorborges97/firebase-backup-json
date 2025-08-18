@@ -1,0 +1,15 @@
+src/
+src/lib/
+**/*.ts
+!**/*.d.ts
+**/*.tsx
+*.map
+tsconfig.json
+test/
+tests/
+__tests__/
+.vscode/
+node_modules/
+README.md
+package-lock.json
+.npmignore

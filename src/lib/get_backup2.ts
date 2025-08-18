@@ -52,9 +52,9 @@ const getAndSaveBackupJson = async (firestore: admin.firestore.Firestore, {
             dataJson: { colecoes },
             dataString: backupJSON
         };
-    } catch (error) {
-        logBackupInfo(viewLog, "❌ Erro ao fazer o backup: ", error?.message || error);
-        throw new FirebaseBackupJsonError("Erro ao fazer o backup", error);
+    } catch (error: any) {
+        logBackupInfo(viewLog, "❌ Erro ao fazer o backup: ", (error?.message || error).toString());
+        throw new FirebaseBackupJsonError("Erro ao fazer o backup", error.toString());
     }
 };
 
@@ -77,7 +77,6 @@ async function processCollection2(
 
     logBackupInfo(viewLog, "Iniciando processamento da coleção: ", path);
 
-    let collectionData: any[] = [];
     let query: Query<DocumentData> = firestore.collection(path);
 
     // Filtro por ID (IN)
