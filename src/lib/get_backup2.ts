@@ -57,7 +57,6 @@ const getAndSaveBackupJson = async (firestore: admin.firestore.Firestore, {
         throw new FirebaseBackupJsonError("Erro ao fazer o backup", error.toString());
     }
 };
-
 async function processCollection2(
     firestore: admin.firestore.Firestore,
     collection: Collection,
@@ -157,7 +156,6 @@ async function processCollection2(
         return null;
     }
 }
-
 async function fetchAllDocuments(
     query: Query<DocumentData>,
     path: string,
@@ -206,5 +204,61 @@ async function fetchAllDocuments(
     return collectionData;
 }
 
-export { getAndSaveBackupJson as backup };
+async function backupStorage(
+    storage: admin.storage.Storage,
+    firestore: admin.firestore.Firestore,
+    path: string, {
+    collections = [],
+    dataInicio,
+    dataFim,
+    viewLog = false,
+    saveLocal = true,
+}: PropsBackup
+) {
+    const backupData = await getAndSaveBackupJson(firestore, {
+        collections,
+        dataInicio,
+        dataFim,
+        viewLog,
+        saveLocal,
+    });
+    logBackupInfo(viewLog, "Iniciando upload do backup para o Storage... ", moment().format("YYYY-MM-DD HH:mm:ss"));
+    await uploadBackupJson(
+        storage, 
+        path,
+        backupData,
+        dataInicio,
+        dataFim,
+        viewLog
+    );
+}
+
+async function uploadBackupJson(
+    storage: admin.storage.Storage,
+    path: string, 
+    backupJson: { dataJson: any; dataString: string },
+    diaAnterior: Date,
+    fimDiaAnterior: Date,
+    viewLog: boolean = false,
+) {
+    try {
+          // Salvar backupJson no Firebase Storage
+          const bucket = storage.bucket();
+          const fileName = `${path}/${getBackupFilename(
+            diaAnterior,
+            fimDiaAnterior
+          )}`;
+          //Nome que será salvo vai ficar assim: 'backup_YYYY-MM-DD-YYYY-MM-DD.json'
+          const file = bucket.file(fileName);
+          await file.save(backupJson.dataString, {
+            contentType: "application/json",
+          });
+          console.log(`Backup salvo no Storage: ${fileName}`);
+      } catch (error: any) {
+        logBackupInfo(viewLog, "❌ Erro ao fazer o backup: ", (error?.message || error).toString());
+        throw new FirebaseBackupJsonError("Erro ao fazer o backup", error.toString());
+    }
+}
+
+export { getAndSaveBackupJson as backup, backupStorage };
 

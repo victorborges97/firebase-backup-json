@@ -99,6 +99,33 @@ await restorePath(firestore, "backup_2025-01-01-2025-01-31.json", { viewLog: tru
 }
 ```
 
+### Suporte a múltiplos níveis (subcoleções aninhadas)
+
+É possível definir `children` em qualquer nível da configuração para filtrar/renomear subcoleções em profundidade. Por exemplo, para filtrar a coleção raiz `EMPRESAS`, renomeá-la para `BUSINESS`, e também filtrar a subcoleção `RESERVATION` por data e renomear uma sub-subcoleção `ATTENDEES`:
+
+```js
+{
+  pathCollection: 'EMPRESAS',
+  newCollectionName: 'BUSINESS',
+  filtroData: { name: 'createdAt' },
+  children: [
+    {
+      pathCollection: 'RESERVATION',
+      filtroData: { name: 'createdAt' },
+      children: [
+        {
+          pathCollection: 'ATTENDEES',
+          filtroId: ['a1','a2']
+        }
+      ]
+    }
+  ]
+}
+```
+
+A ferramenta atualiza automaticamente os caminhos (`path`) nos documentos e subcoleções para refletir renomeações em qualquer nível da hierarquia.
+```
+
 ## Saída
 
 - Um arquivo JSON será salvo no diretório atual, nomeado como:

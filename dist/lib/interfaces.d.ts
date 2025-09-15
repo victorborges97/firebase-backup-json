@@ -26,3 +26,12 @@ export interface PropsBackup {
     viewLog?: boolean;
     saveLocal?: boolean;
 }
+export type CollectionConfig = {
+    pathCollection: string;
+    newCollectionName?: string;
+    filtroId?: string[];
+    filtroData?: {
+        name: string;
+    } | null;
+    children?: CollectionConfig[];
+};

@@ -6,4 +6,5 @@ declare const getAndSaveBackupJson: (firestore: admin.firestore.Firestore, { col
     };
     dataString: string;
 }>;
-export { getAndSaveBackupJson as backup };
+declare function backupStorage(storage: admin.storage.Storage, firestore: admin.firestore.Firestore, path: string, { collections, dataInicio, dataFim, viewLog, saveLocal, }: PropsBackup): Promise<void>;
+export { getAndSaveBackupJson as backup, backupStorage };

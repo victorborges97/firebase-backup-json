@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restorePath = exports.restoreJson = void 0;
+exports.restorePath = exports.restoreJson = exports.restoreBackupsByDate = void 0;
 const admin = __importStar(require("firebase-admin"));
 const fs = __importStar(require("fs"));
 const moment_1 = __importDefault(require("moment"));
@@ -56,7 +56,7 @@ async function saveBackupToFirestore(firestore, collectionData, batch, batchOps,
         }
     }
 }
-const restoreFile = async (firestore, pathJson, { viewLog = false }) => {
+const restorePath = async (firestore, pathJson, { viewLog = false }) => {
     try {
         if (pathJson.length === 0) {
             (0, utils_1.logRestoreInfo)(viewLog, "⚠️ Nenhum caminho fornecido");
@@ -64,14 +64,14 @@ const restoreFile = async (firestore, pathJson, { viewLog = false }) => {
         }
         (0, utils_1.logRestoreInfo)(viewLog, "✅ INICIANDO ", (0, moment_1.default)().format("YYYY-MM-DD HH:mm:ss"));
         const backupColecoes = parseBackupJSON(fs.readFileSync(pathJson, "utf8"));
-        await restoreBackupJsonInFirebase(firestore, backupColecoes, { viewLog });
+        await restoreJson(firestore, backupColecoes, { viewLog });
     }
     catch (error) {
         (0, utils_1.logRestoreInfo)(true, "❌ Erro ao restaurar arquivo:", error.toString());
     }
 };
-exports.restorePath = restoreFile;
-const restoreBackupJsonInFirebase = async (firestore, backupColecoes, { viewLog = false }) => {
+exports.restorePath = restorePath;
+const restoreJson = async (firestore, backupColecoes, { viewLog = false }) => {
     try {
         if (backupColecoes.length === 0) {
             (0, utils_1.logRestoreInfo)(viewLog, "⚠️ Nenhum dado de backup encontrado");
@@ -97,7 +97,7 @@ const restoreBackupJsonInFirebase = async (firestore, backupColecoes, { viewLog 
         throw new exceptions_1.FirebaseBackupJsonError("Erro ao fazer o restore backup", error.toString());
     }
 };
-exports.restoreJson = restoreBackupJsonInFirebase;
+exports.restoreJson = restoreJson;
 function parseBackupJSON(jsonData) {
     const backupData = JSON.parse(jsonData);
     if (!backupData || !backupData.colecoes) {
@@ -134,3 +134,66 @@ function restoreFirestoreTypes(data) {
     }
     return convertedData;
 }
+// ... helpers moved to utils.ts
+/**
+ * Busca e restaura backups do bucket pelo intervalo de datas.
+ */
+async function restoreBackupsByDate({ firestore, storage, caminho_backup, dataInicio, dataFim, viewLog = false, collections, }) {
+    const inicio = new Date(dataInicio);
+    const fim = new Date(dataFim);
+    const bucket = storage.bucket();
+    // 1. Listar todos arquivos do bucket nesse prefixo
+    const [files] = await bucket.getFiles({ prefix: caminho_backup });
+    // 2. Filtrar arquivos que estão no intervalo de datas
+    (0, utils_1.logRestoreInfo)(viewLog, `🔍 Procurando arquivos de backup entre ${(0, moment_1.default)(inicio).format("DD-MM-YYYY")} e ${(0, moment_1.default)(fim).format("DD-MM-YYYY")}`);
+    (0, utils_1.logRestoreInfo)(viewLog, `📁 Total de arquivos encontrados no bucket com o prefixo '${caminho_backup}': ${files.length}`);
+    const arquivosFiltrados = files.filter((file) => {
+        const match = file.name.match(/bkp_(\d{2}-\d{2}-\d{4})_(\d{2}-\d{2}-\d{4})\.json$/);
+        if (!match)
+            return false;
+        const dataInicioArquivo = (0, moment_1.default)(match[1], "DD-MM-YYYY").toDate();
+        const dataFimArquivo = (0, moment_1.default)(match[2], "DD-MM-YYYY").toDate();
+        // O arquivo é incluído se houver sobreposição com o intervalo solicitado
+        return dataFimArquivo >= inicio && dataInicioArquivo <= fim;
+    });
+    (0, utils_1.logRestoreInfo)(viewLog, `✅ Total de arquivos de backup encontrados no intervalo: ${arquivosFiltrados.length}`);
+    console.log(arquivosFiltrados.map(f => f.name).join("\n"));
+    if (arquivosFiltrados.length === 0) {
+        throw new Error("Nenhum arquivo de backup encontrado no intervalo.");
+    }
+    // 3. Restaurar documentos de cada arquivo
+    for (const file of arquivosFiltrados) {
+        try {
+            // Tenta baixar o arquivo para memória
+            const [contents] = await file.download();
+            const jsonData = contents.toString("utf8");
+            const backupColecoes = parseBackupJSON(jsonData);
+            // Se foi passada uma configuração de collections, filtramos o backup antes de restaurar
+            if (collections && collections.length) {
+                const inicioFile = new Date(dataInicio);
+                const fimFile = new Date(dataFim);
+                const filtered = [];
+                for (const cfg of collections) {
+                    for (const bc of backupColecoes) {
+                        const fc = (0, utils_1.filterCollectionByConfig)(bc, cfg, inicioFile, fimFile);
+                        if (fc)
+                            filtered.push(fc);
+                    }
+                }
+                if (filtered.length === 0) {
+                    (0, utils_1.logRestoreInfo)(viewLog, `⚠️ Nenhum documento correspondente à configuração encontrado no arquivo ${file.name}`);
+                }
+                else {
+                    await restoreJson(firestore, filtered, { viewLog });
+                }
+            }
+            else {
+                await restoreJson(firestore, backupColecoes, { viewLog });
+            }
+        }
+        catch (error) {
+            (0, utils_1.logRestoreInfo)(true, `❌ Erro ao restaurar arquivo ${file.name}:`, error.toString());
+        }
+    }
+}
+exports.restoreBackupsByDate = restoreBackupsByDate;

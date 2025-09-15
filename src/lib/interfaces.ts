@@ -29,3 +29,12 @@ export interface PropsBackup {
     viewLog?: boolean;
     saveLocal?: boolean;
 }
+
+// Reuse type for restore filtering
+export type CollectionConfig = {
+    pathCollection: string;
+    newCollectionName?: string;
+    filtroId?: string[];
+    filtroData?: { name: string } | null;
+    children?: CollectionConfig[];
+};

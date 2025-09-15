@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.backup = void 0;
+exports.backupStorage = exports.backup = void 0;
 const admin = __importStar(require("firebase-admin"));
 const fs = __importStar(require("fs"));
 const moment_1 = __importDefault(require("moment"));
@@ -155,4 +155,33 @@ async function fetchAllDocuments(query, path, newPath, hasUpdatePath, viewLog) {
         hasMore = snapshot.size === pageSize;
     }
     return collectionData;
+}
+async function backupStorage(storage, firestore, path, { collections = [], dataInicio, dataFim, viewLog = false, saveLocal = true, }) {
+    const backupData = await getAndSaveBackupJson(firestore, {
+        collections,
+        dataInicio,
+        dataFim,
+        viewLog,
+        saveLocal,
+    });
+    (0, utils_1.logBackupInfo)(viewLog, "Iniciando upload do backup para o Storage... ", (0, moment_1.default)().format("YYYY-MM-DD HH:mm:ss"));
+    await uploadBackupJson(storage, path, backupData, dataInicio, dataFim, viewLog);
+}
+exports.backupStorage = backupStorage;
+async function uploadBackupJson(storage, path, backupJson, diaAnterior, fimDiaAnterior, viewLog = false) {
+    try {
+        // Salvar backupJson no Firebase Storage
+        const bucket = storage.bucket();
+        const fileName = `${path}/${(0, utils_1.getBackupFilename)(diaAnterior, fimDiaAnterior)}`;
+        //Nome que será salvo vai ficar assim: 'backup_YYYY-MM-DD-YYYY-MM-DD.json'
+        const file = bucket.file(fileName);
+        await file.save(backupJson.dataString, {
+            contentType: "application/json",
+        });
+        console.log(`Backup salvo no Storage: ${fileName}`);
+    }
+    catch (error) {
+        (0, utils_1.logBackupInfo)(viewLog, "❌ Erro ao fazer o backup: ", ((error === null || error === void 0 ? void 0 : error.message) || error).toString());
+        throw new exceptions_1.FirebaseBackupJsonError("Erro ao fazer o backup", error.toString());
+    }
 }
